@@ -5,21 +5,45 @@ on:
     workflows: ["Gatekeeper - approvals"]
     types: [completed]
 
+# потрібні права, щоб ставити статус на коміт PR
 permissions:
   contents: read
   pull-requests: read
+  statuses: write
 
 jobs:
   Component_Tests:
-    # Працюємо тільки якщо Gatekeeper завершився успішно (>= потрібних апрувів)
+    # запускаємось лише коли Gatekeeper пройшов (є потрібна кількість апрувів)
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
+      - name: Debug
+        run: |
+          echo "Gatekeeper conclusion: ${{ github.event.workflow_run.conclusion }}"
+          echo "Event: ${{ github.event.workflow_run.event }}"
+          echo "PR head_sha: ${{ github.event.workflow_run.head_sha }}"
+
       - name: Checkout exact PR commit
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
 
-      - name: Run heavy tests (placeholder)
+      # === ТВОЇ "важкі тести" (демо) ===
+      - name: Run expensive tests (placeholder)
         run: |
-          echo "✅ Expensive component tests passed on commit: $GITHUB_SHA"
+          echo "✅ Expensive component tests passed on $GITHUB_SHA"
+
+      # Позначаємо успіх саме на коміті PR, щоб Required check знявся
+      - name: Set SUCCESS status on PR commit
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: '${{ github.event.workflow_run.head_sha }}',
+              state: 'success',
+              context: 'Component_Tests', // <- має збігатися з Required status check у Branch protection
+              description: 'Expensive component tests passed',
+              target_url: ${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}
+            });
