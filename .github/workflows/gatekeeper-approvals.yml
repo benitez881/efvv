@@ -11,7 +11,7 @@ permissions:
   pull-requests: read
 
 env:
-  APPROVALS_REQUIRED: "1"
+  APPROVALS_REQUIRED: "2"
 
 jobs:
   check-approvals:
