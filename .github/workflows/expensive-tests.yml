@@ -8,7 +8,7 @@ on:
     types: [submitted]
 
 env:
-  REQUIRED_APPROVALS: 2
+  REQUIRED_APPROVALS: 1
 
 jobs:
   CI_Pipeline:
@@ -55,7 +55,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [CI_Pipeline, check_approvals]
     # Запускаємо тести, якщо попередні кроки успішні та є достатньо апрувів
-    if: ${{ success() && fromJSON(needs.check_approvals.outputs.approvals) >= 2 }}
+    if: ${{ success() && fromJSON(needs.check_approvals.outputs.approvals) >= env.REQUIRED_APPROVALS }}
     steps:
       - name: Debug payload
         run: |
