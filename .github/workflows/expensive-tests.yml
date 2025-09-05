@@ -1,20 +1,70 @@
-name: Expensive Component Tests
+name: CI Pipeline
 
 on:
-  workflow_run:
-    workflows: ["Gatekeeper - approvals"]
-    types: [completed]
+  pull_request:
+    branches:
+      - '*'
+  pull_request_review:
+    types: [submitted]
 
-permissions:
-  contents: read
-  pull-requests: read
-  statuses: write  # потрібно для виставлення commit status
+env:
+  REQUIRED_APPROVALS: 2
 
 jobs:
-  Component_Tests:
-    # Працюємо лише коли Gatekeeper завершився успішно (є потрібна кількість апрувів)
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+  CI_Pipeline:
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18
+      - name: Install dependencies
+        run: npm ci
+      - name: Run ESLint
+        run: npm run lint
+      - name: Run Prettier
+        run: npm run format -- --check
+      - name: Build
+        run: npm run build
+
+  check_approvals:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.state == 'open'
+    outputs:
+      approvals: ${{ steps.get_approvals.outputs.approvals }}
+    steps:
+      - name: Get PR approval count
+        id: get_approvals
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const pr = context.payload.pull_request;
+            if (!pr) {
+              core.setFailed('Could not find PR context. This action should only run on pull_request and pull_request_review events.');
+              return;
+            }
+            const { data: reviews } = await github.rest.pulls.listReviews({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              per_page: 100
+            });
+            const latestByUser = new Map();
+            for (const r of reviews) {
+              if (r.user) {
+                latestByUser.set(r.user.id, r.state);
+              }
+            }
+            const approvals = [...latestByUser.values()].filter(s => s === 'APPROVED').length;
+            core.notice(`Current approvals: ${approvals}`);
+            core.setOutput('approvals', String(approvals));
+
+  Component_Tests:
+    runs-on: ubuntu-latest
+    needs: [CI_Pipeline, check_approvals]
+    # Запускаємо тести, якщо попередні кроки успішні та є достатньо апрувів
+    if: success() && needs.check_approvals.outputs.approvals >= env.REQUIRED_APPROVALS
     steps:
       - name: Debug payload
         run: |
