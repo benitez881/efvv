@@ -20,7 +20,8 @@ jobs:
           script: |
             const pr = context.payload.pull_request;
             if (!pr) {
-              core.setFailed('Could not find PR context. This action should only run on pull_request and pull_request_review events.');
+              core.notice('testmessage');
+              core.setFailed('123123Could not find PR context. This action should only run on pull_request and pull_request_review events.');
               return;
             }
             const { data: reviews } = await github.rest.pulls.listReviews({
@@ -54,7 +55,7 @@ jobs:
       # Тут ти підставиш свої реальні "важкі" тести; поки що просто демо-echo
       - name: Run expensive tests (placeholder)
         run: |
-          echo "123✅ Expensive component tests passed on $GITHUB_SHA"
+          echo "222222222✅ Expensive component tests passed on $GITHUB_SHA"
 
       # Виставляємо SUCCESS-статус із контекстом, який зазначений у Branch Protection як required
       - name: Set SUCCESS status on PR commit
