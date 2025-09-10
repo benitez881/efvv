@@ -4,7 +4,6 @@ on:
   workflow_run:
     workflows: [Gatekeeper_Approvals]
     types: [completed]
-    branches: [master]
 
 jobs:
   check_approvals:
