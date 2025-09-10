@@ -1,6 +1,7 @@
 name: Component_Tests
 
 on:
+  workflow_dispatch:
   workflow_run:
     workflows: [Gatekeeper_Approvals]
     types: [completed]
