@@ -45,7 +45,7 @@ jobs:
 
             const gatekeeperPassed = approvals >= 1 && blockers === 0;
 
-            core.notice(`Approvals: ${approvals}/${1}; Blockers: ${blockers}`);
+            core.notice(`Approvals: ${approvals}/${1}; Blockers: ${blockers}; test123`);
             if (!gatekeeperPassed) {
               core.setFailed(`Gate NOT met: need 1 approvals and 0 blockers`);
             }
