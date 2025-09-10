@@ -55,7 +55,7 @@ jobs:
       # Тут ти підставиш свої реальні "важкі" тести; поки що просто демо-echo
       - name: Run expensive tests (placeholder)
         run: |
-          echo "✅ Expensive component tests passed on $GITHUB_SHA"
+          echo "123✅ Expensive component tests passed on $GITHUB_SHA"
 
       # Виставляємо SUCCESS-статус із контекстом, який зазначений у Branch Protection як required
       - name: Set SUCCESS status on PR commit
