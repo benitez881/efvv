@@ -20,7 +20,7 @@ jobs:
           script: |
             const pr = context.payload.pull_request;
             if (!pr) {
-              core.setFailed('Could not find PR context. This action should only run on pull_request and pull_request_review events.');
+              core.setFailed('123123Could not find PR context. This action should only run on pull_request and pull_request_review events.');
               return;
             }
             const { data: reviews } = await github.rest.pulls.listReviews({
