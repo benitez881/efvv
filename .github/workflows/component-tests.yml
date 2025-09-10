@@ -9,7 +9,6 @@ on:
 jobs:
   check_approvals:
     runs-on: ubuntu-latest
-    if: github.event.pull_request.state == 'open'
     outputs:
       approvals: ${{ steps.get_approvals.outputs.approvals }}
     steps:
