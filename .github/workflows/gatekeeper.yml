@@ -1,0 +1,50 @@
+name: Gatekeeper_Approvals
+
+on:
+  pull_request_review:
+    types: [submitted, dismissed]
+    branches: [master]
+
+jobs:
+  approvals_gate:
+    runs-on: ubuntu-latest
+    # Ігноруємо comment-only review, обробляємо dismissed і approve/changes_requested
+    if: >-
+      ${{
+        github.event.action == 'dismissed' ||
+        (github.event.action == 'submitted' && github.event.review.state != 'commented')
+      }}
+    steps:
+      - name: Evaluate approvals / blockers
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const pr = context.payload.pull_request;
+            if (!pr) return core.setFailed('No PR context');
+
+            const allReviews = await github.paginate(
+              github.rest.pulls.listReviews,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr.number,
+                per_page: 100,
+              }
+            );
+
+            const latestByUser = new Map();
+            for (const review of allReviews) {
+              if (review.user && ['APPROVED', 'CHANGES_REQUESTED', 'DISMISSED'].includes(review.state)) {
+                latestByUser.set(review.user.id, review.state);
+              }
+            }
+            const blockers  = [...latestByUser.values()].filter(status => status === 'CHANGES_REQUESTED').length;
+            const approvals = [...latestByUser.values()].filter(status => status === 'APPROVED').length;
+
+            const gatekeeperPassed = approvals >= 1 && blockers === 0;
+
+            core.notice(`Approvals: ${approvals}/${1}; Blockers: ${blockers}`);
+            if (!gatekeeperPassed) {
+              core.setFailed(`Gate NOT met: need 1 approvals and 0 blockers`);
+            }
