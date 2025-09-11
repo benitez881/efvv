@@ -182,3 +182,4 @@ jobs:
                 summary: 'Mocked component tests failed. Перевірте логи цього job.'
               }
             });
+
