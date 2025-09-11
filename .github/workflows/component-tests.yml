@@ -52,7 +52,7 @@ jobs:
               }
             }
             const approvals = [...latestByUser.values()].filter(s => s === 'APPROVED').length;
-            core.notice(`Current approvals21: ${approvals}`);
+            core.notice(`Current ap2provals21: ${approvals}`);
             core.setOutput('approvals', String(approvals));
 
   Component_Tests_Rest:
