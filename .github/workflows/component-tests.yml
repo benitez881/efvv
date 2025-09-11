@@ -62,7 +62,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [check_approvals]
     # Запускаємо тести, якщо попередні кроки успішні та є достатньо апрувів
-    if: ${{ success() && fromJSON(needs.check_approvals.outputs.approvals) >= 1 }}
+    if: ${{ fromJSON(needs.check_approvals.outputs.approvals) >= 1 }}
     steps:
       - name: Debug payload
         run: |
