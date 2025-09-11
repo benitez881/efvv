@@ -71,4 +71,4 @@ jobs:
       # Тут ти підставиш свої реальні "важкі" тести; поки що просто демо-echo
       - name: Run expensive tests (placeholder)
         run: |
-          echo "33✅ Expensive component tests passed on $GITHUB_SHA"
+          echo "44✅ Expensive component tests passed on $GITHUB_SHA"
