@@ -29,7 +29,7 @@ jobs:
             if (!prNumber) {
               core.notice('no prNumber22')
               const { data: prs } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
-                owner, repo, commit_sha: wr.head_sha
+                owner, repo, commit_sha: workflow_run.head_sha
               });
               prNumber = prs[0]?.number;
             }
@@ -66,10 +66,9 @@ jobs:
       - name: Debug payload
         run: |
           echo "Triggered by: ${{ github.event_name }}"
-          echo "PR number: ${{ github.event.pull_request.number }}"
-          echo "Head SHA: ${{ github.event.pull_request.head.sha || github.sha }}"
+          echo "Head SHA: ${{ github.event.workflow_run.head_sha }}"
 
       # Тут ти підставиш свої реальні "важкі" тести; поки що просто демо-echo
       - name: Run expensive tests (placeholder)
         run: |
-          echo "1112✅ Expensive component tests passed on $GITHUB_SHA"
+          echo "33✅ Expensive component tests passed on $GITHUB_SHA"
