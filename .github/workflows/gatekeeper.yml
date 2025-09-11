@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   pull_request_review:
     types: [submitted, dismissed]
-    branches: [master]   # перевір, чи точно master
+    branches: [master] # ← за потреби заміни на master
 
 permissions:
   contents: read
@@ -13,58 +13,12 @@ permissions:
 jobs:
   approvals_gate:
     runs-on: ubuntu-latest
+    # Ігноруємо коментарні ревʼю (commented). Обробляємо dismissed і submitted != commented
     if: >-
       ${{
         github.event.action == 'dismissed' ||
         (github.event.action == 'submitted' && github.event.review.state != 'commented')
       }}
     steps:
-      - run: echo "Review event passed filter (not commented)"
-
-  resolve_ct_inputs:
-    # Потрібно лише якщо approvals_gate відбувся
-    needs: approvals_gate
-    runs-on: ubuntu-latest
-    outputs:
-      pr_number: ${{ steps.out.outputs.pr_number }}
-      head_sha:  ${{ steps.out.outputs.head_sha }}
-    steps:
-      - id: out
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const owner = context.repo.owner;
-            const repo  = context.repo.repo;
-
-            let prNumber = context.payload?.pull_request?.number ?? null;
-            let headSha  = context.payload?.pull_request?.head?.sha ?? null;
-
-            // Якщо це review-івент, але чомусь head_sha нема — візьмемо з review/sha, або з github.sha -s
-            if (!headSha) {
-              headSha = context.payload?.review?.commit_id || process.env.GITHUB_SHA || null;
-            }
-
-            // Якщо prNumber досі нема — спробуємо знайти PR за headSha
-            if (!prNumber && headSha) {
-              const prs = await github.paginate(
-                github.rest.repos.listPullRequestsAssociatedWithCommit,
-                { owner, repo, commit_sha: headSha, per_page: 100 }
-              );
-              prNumber = prs[0]?.number ?? null;
-            }
-
-            core.notice(`Resolved pr_number=${prNumber || 'null'} head_sha=${headSha || 'null'}`);
-
-            core.setOutput('pr_number', prNumber);
-            core.setOutput('head_sha', headSha);
-
-  run_ct:
-    needs: [approvals_gate, resolve_ct_inputs]
-    uses: ./.github/workflows/component-tests.yml
-    with:
-      pr_number: ${{ needs.resolve_ct_inputs.outputs.pr_number }}
-      head_sha:  ${{ needs.resolve_ct_inputs.outputs.head_sha }}
-    permissions:
-      contents: read
-      pull-requests: read
+      - name: Passed non-comment filter
+        run: echo "Review event passed filter (not commented)"
