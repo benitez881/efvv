@@ -25,19 +25,21 @@ jobs:
       - name: Get PR approval count
         id: get_approvals
         uses: actions/github-script@v7
+        env:
+          PR_NUMBER: ${{ inputs.pr_number }}
+          HEAD_SHA:  ${{ inputs.head_sha }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const owner = context.repo.owner;
             const repo  = context.repo.repo;
 
-            // Отримуємо inputs з workflow_call -
-            const prInput   = core.getInput('pr_number');
-            const shaInput  = core.getInput('head_sha');
+            // ЧИТАЄМО ІНПУТИ З ENV (а не через core.getInput)
+            const prInput  = process.env.PR_NUMBER;
+            const shaInput = process.env.HEAD_SHA;
 
             let prNumber = prInput && prInput.trim() ? Number(prInput) : null;
 
-            // Якщо PR не передали — спробуємо знайти за SHA
             if (!prNumber && shaInput) {
               core.notice('PR number not provided — resolving from head_sha');
               const { data: prs } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
@@ -53,7 +55,6 @@ jobs:
 
             core.notice(`Працюємо з PR #${prNumber}`);
 
-            // Тягнемо всі review і рахуємо апруви по останньому стану кожного ревʼювера
             const allReviews = await github.paginate(
               github.rest.pulls.listReviews,
               { owner, repo, pull_number: prNumber, per_page: 100 }
@@ -69,16 +70,3 @@ jobs:
             const approvals = [...latestByUser.values()].filter(s => s === 'APPROVED').length;
             core.notice(`Current approvals: ${approvals}`);
             core.setOutput('approvals', String(approvals));
-
-  Component_Tests_Rest:
-    runs-on: ubuntu-latest
-    needs: [check_approvals]
-    if: ${{ fromJSON(needs.check_approvals.outputs.approvals) >= 2 }}
-    steps:
-      - name: Debug inputs
-        run: |
-          echo "pr_number: ${{ inputs.pr_number }}"
-          echo "head_sha:  ${{ inputs.head_sha }}"
-
-      - name: Run expensive tests (placeholder)
-        run: echo "✅ Expensive component tests passed on $GITHUB_SHA"
