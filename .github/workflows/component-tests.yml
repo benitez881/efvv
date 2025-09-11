@@ -2,6 +2,19 @@ name: CT
 
 on:
   workflow_call:
+    inputs:
+      pr_number:
+        description: 'Pull Request number'
+        required: false
+        type: string
+      head_sha:
+        description: 'Head commit SHA of the PR'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  pull-requests: read
 
 jobs:
   check_approvals:
@@ -15,24 +28,26 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const workflow_run = context.payload.workflow_run;
             const owner = context.repo.owner;
-            const repo = context.repo.repo;
+            const repo  = context.repo.repo;
 
-            // 1) Спробуємо взяти номер PR із payload
-            let prNumber = workflow_run?.pull_requests?.[0]?.number;
+            // Отримуємо inputs з workflow_call
+            const prInput   = core.getInput('pr_number');
+            const shaInput  = core.getInput('head_sha');
 
-            // 2) Якщо нема — шукаємо PR за комітом
-            if (!prNumber) {
-              core.notice('no prNumber22')
+            let prNumber = prInput && prInput.trim() ? Number(prInput) : null;
+
+            // Якщо PR не передали — спробуємо знайти за SHA
+            if (!prNumber && shaInput) {
+              core.notice('PR number not provided — resolving from head_sha');
               const { data: prs } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
-                owner, repo, commit_sha: workflow_run.head_sha
+                owner, repo, commit_sha: shaInput
               });
-              prNumber = prs[0]?.number;
+              prNumber = prs[0]?.number || null;
             }
 
             if (!prNumber) {
-              core.setFailed('Не знайшов повʼязаний PR для цього workflow_run (pull_requests[] порожній і за head_sha PR не знайдено).');
+              core.setFailed('Не знайшов PR: передай pr_number або head_sha у workflow_call.');
               return;
             }
 
@@ -46,26 +61,24 @@ jobs:
 
             const latestByUser = new Map();
             for (const review of allReviews) {
-              if (review.user) {
+              if (review.user && ['APPROVED','CHANGES_REQUESTED','DISMISSED','COMMENTED'].includes(review.state)) {
                 latestByUser.set(review.user.id, review.state);
               }
             }
+
             const approvals = [...latestByUser.values()].filter(s => s === 'APPROVED').length;
-            core.notice(`Current ap2provals21: ${approvals}`);
+            core.notice(`Current approvals: ${approvals}`);
             core.setOutput('approvals', String(approvals));
 
   Component_Tests_Rest:
     runs-on: ubuntu-latest
     needs: [check_approvals]
-    # Запускаємо тести, якщо попередні кроки успішні та є достатньо апрувів
     if: ${{ fromJSON(needs.check_approvals.outputs.approvals) >= 2 }}
     steps:
-      - name: Debug payload
+      - name: Debug inputs
         run: |
-          echo "Triggered by: ${{ github.event_name }}"
-          echo "Head SHA: ${{ github.event.workflow_run.head_sha }}"
+          echo "pr_number: ${{ inputs.pr_number }}"
+          echo "head_sha:  ${{ inputs.head_sha }}"
 
-      # Тут ти підставиш свої реальні "важкі" тести; поки що просто демо-echo
       - name: Run expensive tests (placeholder)
-        run: |
-          echo "44✅ Expensive component tests passed on $GITHUB_SHA"
+        run: echo "✅ Expensive component tests passed on $GITHUB_SHA"
