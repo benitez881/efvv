@@ -48,9 +48,9 @@ jobs:
             );
 
             const latestByUser = new Map();
-            for (const r of reviews) {
-              if (r.user) {
-                latestByUser.set(r.user.id, r.state);
+            for (const review of allReviews) {
+              if (review.user) {
+                latestByUser.set(review.user.id, review.state);
               }
             }
             const approvals = [...latestByUser.values()].filter(s => s === 'APPROVED').length;
