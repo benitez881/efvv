@@ -27,7 +27,7 @@ jobs:
 
             // 2) Якщо нема — шукаємо PR за комітом
             if (!prNumber) {
-              core.notice('no prNumber')
+              core.notice('no prNumber2')
               const { data: prs } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
                 owner, repo, commit_sha: wr.head_sha
               });
@@ -48,9 +48,9 @@ jobs:
             );
 
             const latestByUser = new Map();
-            for (const r of reviews) {
-              if (r.user) {
-                latestByUser.set(r.user.id, r.state);
+            for (const review of allReviews) {
+              if (review.user) {
+                latestByUser.set(review.user.id, review.state);
               }
             }
             const approvals = [...latestByUser.values()].filter(s => s === 'APPROVED').length;
