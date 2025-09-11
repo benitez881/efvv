@@ -9,66 +9,69 @@ on:
 jobs:
   approvals_gate:
     runs-on: ubuntu-latest
-    # Ігноруємо comment-only review, обробляємо dismissed і approve/changes_requested
     if: >-
       ${{
         github.event.action == 'dismissed' ||
         (github.event.action == 'submitted' && github.event.review.state != 'commented')
       }}
-    outputs:
-      approvals: ${{ steps.gate.outputs.approvals }}
-      blockers:  ${{ steps.gate.outputs.blockers }}
-      passed:    ${{ steps.gate.outputs.passed }}
     steps:
-      - name: Evaluate approvals / blockers
-        id: gate
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const pr = context.payload.pull_request;
-            if (!pr) {
-              core.notice('No PR context; exiting gate with passed=false');
-              core.setOutput('approvals', '0');
-              core.setOutput('blockers',  '1'); // вважаємо що є блокер, щоб не запускати тести
-              core.setOutput('passed',    'false');
-              return;
-            }
+      - run: echo "Review event passed filter (not commented)"
 
-            const allReviews = await github.paginate(
-              github.rest.pulls.listReviews,
-              {
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                pull_number: pr.number,
-                per_page: 100,
-              }
-            );
 
-            const latestByUser = new Map();
-            for (const review of allReviews) {
-              if (review.user && ['APPROVED', 'CHANGES_REQUESTED', 'DISMISSED'].includes(review.state)) {
-                latestByUser.set(review.user.id, review.state);
-              }
-            }
+  # approvals_gate:
+  #   runs-on: ubuntu-latest
+  #   # Ігноруємо comment-only review, обробляємо dismissed і approve/changes_requested
+  #   if: >-
+  #     ${{
+  #       github.event.action == 'dismissed' ||
+  #       (github.event.action == 'submitted' && github.event.review.state != 'commented')
+  #     }}
+  #   outputs:
+  #     approvals: ${{ steps.gate.outputs.approvals }}
+  #     blockers:  ${{ steps.gate.outputs.blockers }}
+  #     passed:    ${{ steps.gate.outputs.passed }}
+  #   steps:
+  #     - name: Evaluate approvals / blockers
+  #       id: gate
+  #       uses: actions/github-script@v7
+  #       with:
+  #         github-token: ${{ secrets.GITHUB_TOKEN }}
+  #         script: |
+  #           const pr = context.payload.pull_request;
+  #           if (!pr) {
+  #             core.notice('No PR context; exiting gate with passed=false');
+  #             core.setOutput('approvals', '0');
+  #             core.setOutput('blockers',  '1'); // вважаємо що є блокер, щоб не запускати тести
+  #             core.setOutput('passed',    'false');
+  #             return;
+  #           }
 
-            const approvals = [...latestByUser.values()].filter(s => s === 'APPROVED').length;
-            const blockers  = [...latestByUser.values()].filter(s => s === 'CHANGES_REQUESTED').length;
+  #           const allReviews = await github.paginate(
+  #             github.rest.pulls.listReviews,
+  #             {
+  #               owner: context.repo.owner,
+  #               repo: context.repo.repo,
+  #               pull_number: pr.number,
+  #               per_page: 100,
+  #             }
+  #           );
 
-            const needApprovals = 1; // винеси у vars/ENV за потреби
-            const passed = approvals >= needApprovals && blockers === 0;
+  #           const latestByUser = new Map();
+  #           for (const review of allReviews) {
+  #             if (review.user && ['APPROVED', 'CHANGES_REQUESTED', 'DISMISSED'].includes(review.state)) {
+  #               latestByUser.set(review.user.id, review.state);
+  #             }
+  #           }
 
-            core.notice(`Approvals: ${approvals}/${needApprovals}; Blockers: ${blockers}; Gate passed: ${passed}`);
-            // ВАЖЛИВО: НЕ викликати core.setFailed() — job має завершитися успішно
-            core.setOutput('approvals', String(approvals));
-            core.setOutput('blockers',  String(blockers));
-            core.setOutput('passed',    String(passed));
+  #           const approvals = [...latestByUser.values()].filter(s => s === 'APPROVED').length;
+  #           const blockers  = [...latestByUser.values()].filter(s => s === 'CHANGES_REQUESTED').length;
 
-  skip_if_not_passed:
-    name: Skip if not passed
-    runs-on: ubuntu-latest
-    needs: approvals_gate
-    # Якщо бракує апрувів або є блокери — job буде SKIPPED (не запускатиметься)
-    if: needs.approvals_gate.outputs.passed == 'true'
-    steps:
-      - run: echo "Run your tests here23"
+  #           const needApprovals = 1; // винеси у vars/ENV за потреби
+  #           const passed = approvals >= needApprovals && blockers === 0;
+
+  #           core.notice(`Approvals: ${approvals}/${needApprovals}; Blockers: ${blockers}; Gate passed: ${passed}`);
+  #           // ВАЖЛИВО: НЕ викликати core.setFailed() — job має завершитися успішно
+  #           core.setOutput('approvals', String(approvals));
+  #           core.setOutput('blockers',  String(blockers));
+  #           core.setOutput('passed',    String(passed));
+
