@@ -18,18 +18,35 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const pr = context.payload.pull_request;
-            if (!pr) {
-              core.notice('testmessage');
-              core.setFailed('123123Could not find PR context. This action should only run on pull_request and pull_request_review events.');
+            const wr = context.payload.workflow_run;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            // 1) Спробуємо взяти номер PR із payload
+            let prNumber = wr.pull_requests && wr.pull_requests[0] && wr.pull_requests[0].number;
+
+            // 2) Якщо нема — шукаємо PR за комітом
+            if (!prNumber) {
+              core.notice('no prNumber')
+              const { data: prs } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+                owner, repo, commit_sha: wr.head_sha
+              });
+              prNumber = prs[0]?.number;
+            }
+
+            if (!prNumber) {
+              core.setFailed('Не знайшов повʼязаний PR для цього workflow_run (pull_requests[] порожній і за head_sha PR не знайдено).');
               return;
             }
-            const { data: reviews } = await github.rest.pulls.listReviews({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: pr.number,
-              per_page: 100
-            });
+
+            core.notice(`Працюємо з PR #${prNumber}`);
+
+            // Тягнемо всі review і рахуємо апруви по останньому стану кожного ревʼювера
+            const allReviews = await github.paginate(
+              github.rest.pulls.listReviews,
+              { owner, repo, pull_number: prNumber, per_page: 100 }
+            );
+
             const latestByUser = new Map();
             for (const r of reviews) {
               if (r.user) {
