@@ -34,7 +34,7 @@ jobs:
             const owner = context.repo.owner;
             const repo  = context.repo.repo;
 
-            // ЧИТАЄМО ІНПУТИ З ENV (а не через core.getInput)
+            // ЧИТАЄМО ІНПУТИ З ENV (а не через core.getInput)2
             const prInput  = process.env.PR_NUMBER;
             const shaInput = process.env.HEAD_SHA;
 
