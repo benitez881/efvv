@@ -1,85 +1,185 @@
 name: CT
 
 on:
-  workflow_call:
-    inputs:
-      pr_number:
-        description: 'Pull Request number'
-        required: false
-        type: string
-      head_sha:
-        description: 'Head commit SHA of the PR'
-        required: false
-        type: string
+  workflow_run:
+    workflows: [Gatekeeper_Approvals] # має 1-в-1 збігатися з name: у Gatekeeper
+    types: [completed]
 
 permissions:
   contents: read
   pull-requests: read
+  checks: write   # потрібно для створення/оновлення check-run на SHA PR
 
 jobs:
-  check_approvals:
+  # 1) Визначаємо PR number і head_sha коміту PR (з payload або через пошук за комітом)
+  resolve_ct_inputs:
     runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     outputs:
-      approvals: ${{ steps.get_approvals.outputs.approvals }}
+      pr_number: ${{ steps.out.outputs.pr_number }}
+      head_sha:  ${{ steps.out.outputs.head_sha }}
     steps:
-      - name: Get PR approval count
-        id: get_approvals
+      - id: out
         uses: actions/github-script@v7
-        env:
-          PR_NUMBER: ${{ inputs.pr_number }}
-          HEAD_SHA:  ${{ inputs.head_sha }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const wr = context.payload.workflow_run;
+            const owner = context.repo.owner;
+            const repo  = context.repo.repo;
+
+            let prNumber = wr?.pull_requests?.[0]?.number;
+            if (!prNumber) {
+              const { data: prs } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+                owner, repo, commit_sha: wr.head_sha
+              });
+              prNumber = prs[0]?.number;
+            }
+
+            if (!prNumber) {
+              core.setFailed('Не знайшов повʼязаний PR для цього workflow_run (pull_requests[] порожній і за head_sha PR не знайдено).');
+              return;
+            }
+
+            core.notice(`Resolved pr_number=${prNumber} head_sha=${wr.head_sha}`);
+            core.setOutput('pr_number', String(prNumber));
+            core.setOutput('head_sha',  String(wr.head_sha));
+
+  # 2) Політика: 3 APPROVED і 0 CHANGES_REQUESTED
+  policy_gate:
+    runs-on: ubuntu-latest
+    needs: resolve_ct_inputs
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    outputs:
+      should_run: ${{ steps.eval.outputs.should_run }}
+      approvals:  ${{ steps.eval.outputs.approvals }}
+      has_changes: ${{ steps.eval.outputs.has_changes }}
+    steps:
+      - id: eval
+        uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const owner = context.repo.owner;
             const repo  = context.repo.repo;
-
-            // ЧИТАЄМО ІНПУТИ З ENV (а не через core.getInput)2
-            const prInput  = process.env.PR_NUMBER;
-            const shaInput = process.env.HEAD_SHA;
-
-            let prNumber = prInput && prInput.trim() ? Number(prInput) : null;
-
-            if (!prNumber && shaInput) {
-              core.notice('PR number not provided — resolving from head_sha');
-              const { data: prs } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
-                owner, repo, commit_sha: shaInput
-              });
-              prNumber = prs[0]?.number || null;
-            }
-
-            if (!prNumber) {
-              core.setFailed('Не знайшов PR: передай pr_number або head_sha у workflow_call.');
-              return;
-            }
-
-            core.notice(`Працюємо з PR #${prNumber}`);
+            const pr_number = Number('${{ needs.resolve_ct_inputs.outputs.pr_number }}');
 
             const allReviews = await github.paginate(
               github.rest.pulls.listReviews,
-              { owner, repo, pull_number: prNumber, per_page: 100 }
+              { owner, repo, pull_number: pr_number, per_page: 100 }
             );
 
             const latestByUser = new Map();
-            for (const review of allReviews) {
-              if (review.user && ['APPROVED','CHANGES_REQUESTED','DISMISSED','COMMENTED'].includes(review.state)) {
-                latestByUser.set(review.user.id, review.state);
+            for (const r of allReviews) {
+              if (!r.user) continue;
+              if (['APPROVED', 'CHANGES_REQUESTED', 'DISMISSED'].includes(r.state)) {
+                latestByUser.set(r.user.id, r.state);
               }
             }
 
-            const approvals = [...latestByUser.values()].filter(s => s === 'APPROVED').length;
-            core.notice(`Current approvals: ${approvals}`);
-            core.setOutput('approvals', String(approvals));
-  
-  Component_Tests_Rest:
-    runs-on: ubuntu-latest
-    needs: [check_approvals]
-    if: ${{ fromJSON(needs.check_approvals.outputs.approvals) >= 2 }}
-    steps:
-      - name: Debug inputs
-        run: |
-          echo "pr_number: ${{ inputs.pr_number }}"
-          echo "head_sha:  ${{ inputs.head_sha }}"
+            const states = [...latestByUser.values()];
+            const approvals = states.filter(s => s === 'APPROVED').length;
+            const hasChanges = states.includes('CHANGES_REQUESTED');
 
-      - name: Run expensive tests (placeholder)
-        run: echo "✅ Expensive component tests passed on $GITHUB_SHA"
+            const shouldRun = approvals >= 3 && !hasChanges ? 'true' : 'false';
+            core.notice(`policy: approvals=${approvals}, hasChanges=${hasChanges} => shouldRun=${shouldRun}`);
+
+            core.setOutput('approvals', String(approvals));
+            core.setOutput('has_changes', String(hasChanges));
+            core.setOutput('should_run', shouldRun);
+
+  # 3) Основний job: запускається ТІЛЬКИ коли політика виконана.
+  #    Тут створюємо check-run на SHA PR, робимо "мокові" тести (echo),
+  #    і завершуємо check-run як success/failure.
+  component_tests_rest:
+    name: Component_Tests_Rest  # ← точна назва required check
+    runs-on: ubuntu-latest
+    needs: [resolve_ct_inputs, policy_gate]
+    if: ${{ github.event.workflow_run.conclusion == 'success' && needs.policy_gate.outputs.should_run == 'true' }}
+    concurrency:
+      group: ct-${{ needs.resolve_ct_inputs.outputs.pr_number }}
+      cancel-in-progress: false
+
+    steps:
+      - name: Create CT check (in_progress) on PR SHA
+        id: create_check
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo  = context.repo.repo;
+            const head_sha = `${{ needs.resolve_ct_inputs.outputs.head_sha }}`;
+            const name = 'Component_Tests_Rest';
+
+            const { data: check } = await github.rest.checks.create({
+              owner, repo,
+              name,
+              head_sha,
+              status: 'in_progress',
+              started_at: new Date().toISOString()
+            });
+
+            core.notice(`Created check-run ${name} (${check.id}) on PR SHA ${head_sha}`);
+            core.setOutput('check_run_id', String(check.id));
+
+      - name: Checkout PR commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve_ct_inputs.outputs.head_sha }}
+
+      # ------- МОКОВІ ТЕСТИ (ЛИШЕ echo) -------
+      - name: Mock install step
+        run: echo "Skipping install - mock mode"
+
+      - name: Mock component tests
+        id: run_tests
+        run: |
+          echo "Running MOCK component tests..."
+          echo "Pretend tests passed ✅"
+          # Exit code 0 to simulate success
+          exit 0
+      # -----------------------------------------
+
+      - name: Mark CT check as success
+        if: ${{ success() }}
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo  = context.repo.repo;
+            const check_run_id = Number('${{ steps.create_check.outputs.check_run_id }}');
+
+            await github.rest.checks.update({
+              owner, repo, check_run_id,
+              status: 'completed',
+              conclusion: 'success',
+              completed_at: new Date().toISOString(),
+              output: {
+                title: 'Component tests passed (MOCK)',
+                summary: 'Mocked component tests passed successfully.'
+              }
+            });
+
+      - name: Mark CT check as failure
+        if: ${{ failure() }}
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo  = context.repo.repo;
+            const check_run_id = Number('${{ steps.create_check.outputs.check_run_id }}');
+
+            await github.rest.checks.update({
+              owner, repo, check_run_id,
+              status: 'completed',
+              conclusion: 'failure',
+              completed_at: new Date().toISOString(),
+              output: {
+                title: 'Component tests failed (MOCK)',
+                summary: 'Mocked component tests failed. Перевірте логи цього job.'
+              }
+            });
+
