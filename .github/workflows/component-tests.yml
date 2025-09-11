@@ -31,7 +31,7 @@ jobs:
             const owner = context.repo.owner;
             const repo  = context.repo.repo;
 
-            // Отримуємо inputs з workflow_call
+            // Отримуємо inputs з workflow_call -
             const prInput   = core.getInput('pr_number');
             const shaInput  = core.getInput('head_sha');
 
