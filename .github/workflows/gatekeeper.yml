@@ -16,6 +16,10 @@ jobs:
       }}
     steps:
       - run: echo "Review event passed filter (not commented)"
+  
+  run_ct:
+    needs: approvals_gate
+    uses: ./.github/workflows/component-tests.yml
 
 
   # approvals_gate:
