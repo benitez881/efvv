@@ -1,9 +1,7 @@
 name: CT
 
 on:
-  workflow_run:
-    workflows: [Gatekeeper_Approvals]
-    types: [completed]
+  workflow_call:
 
 jobs:
   check_approvals:
