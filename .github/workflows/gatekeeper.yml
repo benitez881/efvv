@@ -56,8 +56,8 @@ jobs:
 
             core.notice(`Resolved pr_number=${prNumber || 'null'} head_sha=${headSha || 'null'}`);
 
-            core.setOutput('pr_number', prNumber ? String(prNumber) : '');
-            core.setOutput('head_sha',  headSha  ? String(headSha)  : '');
+            core.setOutput('pr_number', prNumber);
+            core.setOutput('head_sha', headSha);
 
   run_ct:
     needs: [approvals_gate, resolve_ct_inputs]
