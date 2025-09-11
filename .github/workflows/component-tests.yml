@@ -27,7 +27,7 @@ jobs:
 
             // 2) Якщо нема — шукаємо PR за комітом
             if (!prNumber) {
-              core.notice('no prNumber')
+              core.notice('no prNumber2')
               const { data: prs } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
                 owner, repo, commit_sha: wr.head_sha
               });
