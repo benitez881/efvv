@@ -64,11 +64,11 @@ jobs:
             core.setOutput('blockers',  String(blockers));
             core.setOutput('passed',    String(passed));
 
-  component_tests:
-    name: Component_Tests
+  skip_if_not_passed:
+    name: Skip if not passed
     runs-on: ubuntu-latest
     needs: approvals_gate
     # Якщо бракує апрувів або є блокери — job буде SKIPPED (не запускатиметься)
     if: needs.approvals_gate.outputs.passed == 'true'
     steps:
-      - run: echo "Run your tests here"
+      - run: echo "Run your tests here23"
