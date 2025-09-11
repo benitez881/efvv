@@ -71,4 +71,4 @@ jobs:
     # Якщо бракує апрувів або є блокери — job буде SKIPPED (не запускатиметься)
     if: needs.approvals_gate.outputs.passed == 'true'
     steps:
-      - run: echo "Run your tests here"
+      - run: echo "Run your tests here23"
