@@ -55,8 +55,8 @@ jobs:
               }
             }
             const approvals = [...latestByUser.values()].filter(s => s === 'APPROVED').length;
-            core.notice(`Current approvals: ${approvals}`);
-            core.setOutput('approvals2', String(approvals));
+            core.notice(`Current approvals2: ${approvals}`);
+            core.setOutput('approvals', String(approvals));
 
   Component_Tests:
     runs-on: ubuntu-latest
@@ -73,4 +73,4 @@ jobs:
       # Тут ти підставиш свої реальні "важкі" тести; поки що просто демо-echo
       - name: Run expensive tests (placeholder)
         run: |
-          echo "1111✅ Expensive component tests passed on $GITHUB_SHA"
+          echo "1112✅ Expensive component tests passed on $GITHUB_SHA"
