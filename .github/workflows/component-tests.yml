@@ -73,17 +73,3 @@ jobs:
       - name: Run expensive tests (placeholder)
         run: |
           echo "222222222✅ Expensive component tests passed on $GITHUB_SHA"
-
-      # Виставляємо SUCCESS-статус із контекстом, який зазначений у Branch Protection як required
-      - name: Set SUCCESS status on PR commit
-        env:
-          GH_TOKEN: ${{ github.token }}
-          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-          REPO: ${{ github.repository }}
-          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: |
-          gh api repos/$REPO/statuses/$SHA \
-            -f state=success \
-            -f context="Component_Tests" \
-            -f description="Expensive component tests passed" \
-            -f target_url="$RUN_URL"
