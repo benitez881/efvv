@@ -47,7 +47,7 @@ jobs:
             core.setOutput('pr_number', String(prNumber));
             core.setOutput('head_sha',  String(workflowRun.head_sha));
 
-  # 2) Політика: 2 APPROVED і 0 CHANGES_REQUESTED
+  # 2) Політика: 3 APPROVED і 0 CHANGES_REQUESTED
   policy_gate:
     runs-on: ubuntu-latest
     needs: resolve_ct_inputs
@@ -81,7 +81,7 @@ jobs:
             const approvals = states.filter(state => state === 'APPROVED').length;
             const blockers = states.includes('CHANGES_REQUESTED');
 
-            const shouldRun = approvals >= 2 && !blockers ? 'true' : 'false';
+            const shouldRun = approvals >= 3 && !blockers ? 'true' : 'false';
             core.notice(`policy: approvals=${approvals}, blockers=${blockers} => shouldRun=${shouldRun}`);
 
             core.setOutput('approvals', String(approvals));
