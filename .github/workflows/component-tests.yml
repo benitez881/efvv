@@ -94,6 +94,43 @@ jobs:
             core.setOutput('has_changes', String(hasChanges));
             core.setOutput('should_run', shouldRun);
 
+  ct_status_update:
+    runs-on: ubuntu-latest
+    needs: [resolve_ct_inputs, policy_gate]
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    concurrency:
+      group: ct-${{ needs.resolve_ct_inputs.outputs.pr_number }}
+      cancel-in-progress: true
+    steps:
+      - name: Get current PR head SHA (fresh)
+      # беремо свіжий SHA, щоб не було розсинхрону
+        id: head
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { owner, repo } = context.repo;
+            const pr_number = Number('${{ needs.resolve_ct_inputs.outputs.pr_number }}');
+            const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number: pr_number });
+            core.setOutput('head_sha', pr.head.sha);
+
+      - name: Set status to pending (either waiting policy or running tests)
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { owner, repo } = context.repo;
+            const sha = '${{ steps.head.outputs.head_sha }}';
+            const shouldRun = '${{ needs.policy_gate.outputs.should_run }}' === 'true';
+            const desc = shouldRun ? 'Component tests: running…' : 'Component tests: skipped by policy (pending)';
+            await github.rest.repos.createCommitStatus({
+              owner, repo, sha,
+              state: 'pending',
+              context: 'Component_Tests_Godhelp',
+              description: desc,
+              target_url: `${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`
+            });
+
   # 3) Основний job: запускається ТІЛЬКИ коли політика виконана.
   #    Тут створюємо check-run на SHA PR, робимо "мокові" тести (echo),sdasd
   #    і завершуємо check-run як success/failure.
