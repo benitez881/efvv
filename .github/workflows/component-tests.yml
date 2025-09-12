@@ -134,8 +134,8 @@ jobs:
   # 3) Основний job: запускається ТІЛЬКИ коли політика виконана.
   #    Тут створюємо check-run на SHA PR, робимо "мокові" тести (echo),123
   #    і завершуємо check-run як success/failure.
-  component_tests_godhelp:
-    name: Component_Tests_Godhelp
+  component_tests_rest:
+    name: Component_Tests_Rest
     runs-on: ubuntu-latest
     needs: [resolve_ct_inputs, policy_gate, ct_status_update]
     if: ${{ github.event.workflow_run.conclusion == 'success' && needs.policy_gate.outputs.should_run == 'true' }}
@@ -243,6 +243,121 @@ jobs:
               owner, repo, sha,
               state: 'failure',
               context: 'Component_Tests_Godhelp',
+              description: 'Component tests failed (MOCK)',
+              target_url: `${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`
+            });
+
+# 4 Component PayOrderModal tests
+
+  component_tests_payordermodal:
+    name: Component_Tests_PayOrderModal
+    runs-on: ubuntu-latest
+    needs: [resolve_ct_inputs, policy_gate, ct_status_update]
+    if: ${{ github.event.workflow_run.conclusion == 'success' && needs.policy_gate.outputs.should_run == 'true' }}
+    concurrency:
+      group: ct-${{ needs.resolve_ct_inputs.outputs.pr_number }}
+      cancel-in-progress: true
+    steps:
+      - name: Get current PR head SHA (fresh)
+        id: head
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo  = context.repo.repo;
+            const pr_number = Number('${{ needs.resolve_ct_inputs.outputs.pr_number }}');
+            const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number: pr_number });
+            core.notice(`Fresh PR head.sha=${pr.head.sha}`);
+            core.setOutput('head_sha', pr.head.sha);
+      
+      - name: Set commit status pending
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { owner, repo } = context.repo;
+            const sha = '${{ steps.head.outputs.head_sha }}';
+            await github.rest.repos.createCommitStatus({
+              owner, repo, sha,
+              state: 'pending',
+              context: 'Component_Tests_PayOrderModal',
+              description: 'Component tests running…',
+              target_url: `${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`
+            });
+      
+      
+      - name: Debug list check-runs & statuses on this SHA
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo  = context.repo.repo;
+            const ref   = '${{ steps.head.outputs.head_sha }}';
+      
+            // 1) Checks v2 (нові check-runs)
+            const checks = await github.rest.checks.listForRef({ owner, repo, ref, per_page: 100 });
+            core.notice('--- CHECK-RUNS ---');
+            for (const c of checks.data.check_runs) {
+              core.notice(`${c.name} | app=${c.app?.slug} | status=${c.status} | conclusion=${c.conclusion}`);
+            }
+      
+            // 2) Legacy Statuses v1 (contexts)
+            const comb = await github.rest.repos.getCombinedStatusForRef({ owner, repo, ref });
+            core.notice('--- LEGACY STATUSES ---');
+            for (const s of comb.data.statuses) {
+              core.notice(`${s.context} | state=${s.state}`);
+            }
+          
+      - name: Checkout PR commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.head.outputs.head_sha }}
+
+      # ------- МОКОВІ ТЕСТИ (ЛИШЕ echo) -------
+      - name: Mock install step
+        run: echo "Skipping install - mock mode"
+
+      - name: Mock component tests
+        id: run_tests
+        run: |
+          echo "Running MOCK component tests..."
+          echo "Pretend tests passed ✅"
+          # Exit code 0 to simulate success
+          exit 0
+      # -----------------------------------------
+
+      # success
+      - name: Set commit status success (legacy)
+        if: ${{ success() }}
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { owner, repo } = context.repo;
+            const sha = '${{ steps.head.outputs.head_sha }}';
+            await github.rest.repos.createCommitStatus({
+              owner, repo, sha,
+              state: 'success',
+              context: 'Component_Tests_PayOrderModal',
+              description: 'Component tests passed (MOCK)',
+              target_url: `${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`
+            });
+
+      # failure
+      - name: Set commit status failure (legacy)
+        if: ${{ failure() }}
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { owner, repo } = context.repo;
+            const sha = '${{ steps.head.outputs.head_sha }}';
+            await github.rest.repos.createCommitStatus({
+              owner, repo, sha,
+              state: 'failure',
+              context: 'Component_Tests_PayOrderModal',
               description: 'Component tests failed (MOCK)',
               target_url: `${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`
             });
