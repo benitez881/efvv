@@ -45,7 +45,7 @@ jobs:
             core.setOutput('pr_number', String(prNumber));
             core.setOutput('head_sha',  String(wr.head_sha));
 
-  # 2) Політика: 2 APPROVED і 0 CHANGES_REQUESTED
+  # 2) Політика: 2 APPROVED і 0 CHANGES_REQUESTED test -
   policy_gate:
     runs-on: ubuntu-latest
     needs: resolve_ct_inputs
@@ -91,8 +91,8 @@ jobs:
   # 3) Основний job: запускається ТІЛЬКИ коли політика виконана.
   #    Тут створюємо check-run на SHA PR, робимо "мокові" тести (echo),
   #    і завершуємо check-run як success/failure.
-  component_tests_rest:
-    name: Component_Tests_Rest  # ← точна назва required check
+  component_tests_godhelp:
+    name: Component_Tests_Godhelp  # ← точна назва required check
     runs-on: ubuntu-latest
     needs: [resolve_ct_inputs, policy_gate]
     if: ${{ github.event.workflow_run.conclusion == 'success' && needs.policy_gate.outputs.should_run == 'true' }}
@@ -110,7 +110,7 @@ jobs:
             const owner = context.repo.owner;
             const repo  = context.repo.repo;
             const head_sha = `${{ needs.resolve_ct_inputs.outputs.head_sha }}`;
-            const name = 'Component_Tests_Rest';
+            const name = 'Component_Tests_Godhelp';
 
             const { data: check } = await github.rest.checks.create({
               owner, repo,
