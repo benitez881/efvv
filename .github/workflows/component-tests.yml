@@ -45,7 +45,7 @@ jobs:
             core.setOutput('pr_number', String(prNumber));
             core.setOutput('head_sha',  String(wr.head_sha));
 
-  # 2) Політика: 2 APPROVED і 0 CHANGES_REQUESTED test
+  # 2) Політика: 2 APPROVED і 0 CHANGES_REQUESTED test -
   policy_gate:
     runs-on: ubuntu-latest
     needs: resolve_ct_inputs
