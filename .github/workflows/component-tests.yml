@@ -2,7 +2,7 @@ name: CT
 
 on:
   workflow_run:
-    workflows: [Gatekeeper_Approvals] # має 1-в-1 збігатися з name: у Gatekeeper
+    workflows: [Gatekeeper_Approvals]
     types: [completed]
 
 permissions:
