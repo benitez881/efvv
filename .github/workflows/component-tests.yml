@@ -126,7 +126,7 @@ jobs:
             await github.rest.repos.createCommitStatus({
               owner, repo, sha,
               state: 'pending',
-              context: 'Component_Tests_Godhelp',
+              context: 'Component_Tests_Rest',
               description: desc,
               target_url: `${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`
             });
@@ -166,7 +166,7 @@ jobs:
             await github.rest.repos.createCommitStatus({
               owner, repo, sha,
               state: 'pending',
-              context: 'Component_Tests_Godhelp',
+              context: 'Component_Tests_Rest',
               description: 'Component tests running…',
               target_url: `${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`
             });
@@ -225,7 +225,7 @@ jobs:
             await github.rest.repos.createCommitStatus({
               owner, repo, sha,
               state: 'success',
-              context: 'Component_Tests_Godhelp',
+              context: 'Component_Tests_Rest',
               description: 'Component tests passed (MOCK)',
               target_url: `${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`
             });
@@ -242,7 +242,7 @@ jobs:
             await github.rest.repos.createCommitStatus({
               owner, repo, sha,
               state: 'failure',
-              context: 'Component_Tests_Godhelp',
+              context: 'Component_Tests_Rest',
               description: 'Component tests failed (MOCK)',
               target_url: `${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`
             });
