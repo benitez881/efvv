@@ -95,7 +95,7 @@ jobs:
             core.setOutput('should_run', shouldRun);
 
   # 3) Основний job: запускається ТІЛЬКИ коли політика виконана.
-  #    Тут створюємо check-run на SHA PR, робимо "мокові" тести (echo),
+  #    Тут створюємо check-run на SHA PR, робимо "мокові" тести (echo),sdasd
   #    і завершуємо check-run як success/failure.
   component_tests_godhelp:
     name: Component_Tests_Godhelp
