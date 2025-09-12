@@ -8,7 +8,7 @@ on:
 permissions:
   contents: read
   pull-requests: read
-  checks: write   # потрібно для створення/оновлення check-run на SHA PR
+  checks: write
 
 jobs:
   # 1) Визначаємо PR number і head_sha коміту PR (з payload або через пошук за комітом)
