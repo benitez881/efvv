@@ -28,7 +28,10 @@ jobs:
             const owner = context.repo.owner;
             const repo  = context.repo.repo;
 
+            // 1) Спробуємо взяти PR з payload
             let prNumber = wr?.pull_requests?.[0]?.number;
+
+            // 2) Якщо нема — шукаємо PR за комітом, на якому спрацював Gatekeeper
             if (!prNumber) {
               const { data: prs } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
                 owner, repo, commit_sha: wr.head_sha
@@ -37,13 +40,17 @@ jobs:
             }
 
             if (!prNumber) {
-              core.setFailed('Не знайшов повʼязаний PR для цього workflow_run (pull_requests[] порожній і за head_sha PR не знайдено).');
+              core.setFailed('Не знайшов повʼязаний PR для цього workflow_run.');
               return;
             }
 
-            core.notice(`Resolved pr_number=${prNumber} head_sha=${wr.head_sha}`);
+            // 3) Критично: head_sha беремо з актуального PR, а не з wr.head_sha
+            const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number: prNumber });
+            const prHeadSha = pr.head.sha;
+
+            core.notice(`Resolved pr_number=${prNumber}; wr.head_sha=${wr.head_sha}; pr.head.sha=${prHeadSha}`);
             core.setOutput('pr_number', String(prNumber));
-            core.setOutput('head_sha',  String(wr.head_sha));
+            core.setOutput('head_sha',  String(prHeadSha));
 
   # 2) Політика: 2 APPROVED і 0 CHANGES_REQUESTED test -
   policy_gate:
@@ -92,15 +99,27 @@ jobs:
   #    Тут створюємо check-run на SHA PR, робимо "мокові" тести (echo),
   #    і завершуємо check-run як success/failure.
   component_tests_godhelp:
-    name: Component_Tests_Godhelp  # ← точна назва required check
+    name: Component_Tests_Godhelp
     runs-on: ubuntu-latest
     needs: [resolve_ct_inputs, policy_gate]
     if: ${{ github.event.workflow_run.conclusion == 'success' && needs.policy_gate.outputs.should_run == 'true' }}
     concurrency:
       group: ct-${{ needs.resolve_ct_inputs.outputs.pr_number }}
       cancel-in-progress: false
-
     steps:
+      - name: Get current PR head SHA (fresh)
+        id: head
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo  = context.repo.repo;
+            const pr_number = Number('${{ needs.resolve_ct_inputs.outputs.pr_number }}');
+            const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number: pr_number });
+            core.notice(`Fresh PR head.sha=${pr.head.sha}`);
+            core.setOutput('head_sha', pr.head.sha);
+
       - name: Create CT check (in_progress) on PR SHA
         id: create_check
         uses: actions/github-script@v7
@@ -109,7 +128,7 @@ jobs:
           script: |
             const owner = context.repo.owner;
             const repo  = context.repo.repo;
-            const head_sha = `${{ needs.resolve_ct_inputs.outputs.head_sha }}`;
+            const head_sha = `${{ steps.head.outputs.head_sha }}`;
             const name = 'Component_Tests_Godhelp';
 
             const { data: check } = await github.rest.checks.create({
@@ -126,7 +145,7 @@ jobs:
       - name: Checkout PR commit
         uses: actions/checkout@v4
         with:
-          ref: ${{ needs.resolve_ct_inputs.outputs.head_sha }}
+          ref: ${{ steps.head.outputs.head_sha }}
 
       # ------- МОКОВІ ТЕСТИ (ЛИШЕ echo) -------
       - name: Mock install step
