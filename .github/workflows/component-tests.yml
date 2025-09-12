@@ -96,9 +96,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: [resolve_ct_inputs, policy_gate]
     if: ${{ github.event.workflow_run.conclusion == 'success' && needs.policy_gate.outputs.should_run == 'true' }}
-    concurrency:
-      group: ct-${{ needs.resolve_ct_inputs.outputs.pr_number }}
-      cancel-in-progress: false
 
     steps:
       - name: Create CT check (in_progress) on PR SHA
