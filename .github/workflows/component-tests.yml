@@ -11,7 +11,7 @@ permissions:
   checks: write   # потрібно для створення/оновлення check-run на SHA PR
 
 jobs:
-  # 1) Визначаємо PR number і head_sha коміту PR (з payload або через пошук за комітом)
+  # 1) Визначаємо PR number і head_sha коміту PR (з payload або через пошук за комітом) test
   resolve_ct_inputs:
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
