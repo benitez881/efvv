@@ -9,6 +9,7 @@ permissions:
   contents: read
   pull-requests: read
   checks: write
+  statuses: write
 
 jobs:
   resolve_ct_inputs:
@@ -182,6 +183,41 @@ jobs:
           # Exit code 0 to simulate success
           exit 0
       # -----------------------------------------
+
+      # success
+      - name: Set commit status success (legacy)
+        if: ${{ success() }}
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { owner, repo } = context.repo;
+            const sha = '${{ steps.head.outputs.head_sha }}';
+            await github.rest.repos.createCommitStatus({
+              owner, repo, sha,
+              state: 'success',
+              context: 'Component_Tests_Godhelp',
+              description: 'Component tests passed (MOCK)',
+              target_url: `${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`
+            });
+
+      # failure
+      - name: Set commit status failure (legacy)
+        if: ${{ failure() }}
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { owner, repo } = context.repo;
+            const sha = '${{ steps.head.outputs.head_sha }}';
+            await github.rest.repos.createCommitStatus({
+              owner, repo, sha,
+              state: 'failure',
+              context: 'Component_Tests_Godhelp',
+              description: 'Component tests failed (MOCK)',
+              target_url: `${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`
+            });
+
 
       - name: Mark CT check as success
         if: ${{ success() }}
