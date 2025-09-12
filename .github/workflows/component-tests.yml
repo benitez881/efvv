@@ -140,7 +140,7 @@ jobs:
     needs: [resolve_ct_inputs, policy_gate, ct_status_update]
     if: ${{ github.event.workflow_run.conclusion == 'success' && needs.policy_gate.outputs.should_run == 'true' }}
     concurrency:
-      group: ct-${{ needs.resolve_ct_inputs.outputs.pr_number }}
+      group: ct-${{ needs.resolve_ct_inputs.outputs.pr_number }}-rest
       cancel-in-progress: true
     steps:
       - name: Get current PR head SHA (fresh)
@@ -255,7 +255,7 @@ jobs:
     needs: [resolve_ct_inputs, policy_gate, ct_status_update]
     if: ${{ github.event.workflow_run.conclusion == 'success' && needs.policy_gate.outputs.should_run == 'true' }}
     concurrency:
-      group: ct-${{ needs.resolve_ct_inputs.outputs.pr_number }}
+      group: ct-${{ needs.resolve_ct_inputs.outputs.pr_number }}-payordermodal
       cancel-in-progress: true
     steps:
       - name: Get current PR head SHA (fresh)
