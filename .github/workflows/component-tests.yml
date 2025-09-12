@@ -122,7 +122,7 @@ jobs:
             const { owner, repo } = context.repo;
             const sha = '${{ steps.head.outputs.head_sha }}';
             const shouldRun = '${{ needs.policy_gate.outputs.should_run }}' === 'true';
-            const desc = shouldRun ? 'Component tests: running…' : 'Component tests: skipped by policy (pending)';
+            const desc = shouldRun ? 'running…' : 'skipped by policy';
             await github.rest.repos.createCommitStatus({
               owner, repo, sha,
               state: 'pending',
@@ -174,7 +174,7 @@ jobs:
               owner, repo, sha,
               state: 'pending',
               context: 'Component_Tests_Rest',
-              description: 'Component tests running…',
+              description: 'running…',
               target_url: `${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`
             });
       
@@ -289,7 +289,7 @@ jobs:
               owner, repo, sha,
               state: 'pending',
               context: 'Component_Tests_PayOrderModal',
-              description: 'Component tests running…',
+              description: 'running…',
               target_url: `${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`
             });
       
