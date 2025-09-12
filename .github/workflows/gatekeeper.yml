@@ -2,16 +2,20 @@ name: Gatekeeper_Approvals
 
 on:
   workflow_dispatch:
+  pull_request:
+    types: [synchronize]
+    branches: [master]
   pull_request_review:
     types: [submitted, dismissed]
     branches: [master]
+  
 
 permissions:
   contents: read
   pull-requests: read
 
 jobs:
-  approvals_gate:
+  approvals_gate_review:
     runs-on: ubuntu-latest
     # Ігноруємо коментарні ревʼю (commented). Обробляємо dismissed і submitted != commented
     if: >-
@@ -27,3 +31,9 @@ jobs:
 
       - name: Passed non-comment filter
         run: echo "Review event passed filter (not commented)"
+
+  approvals_gate_sync:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'pull_request' && github.event.action == 'synchronize' }}
+    steps:
+      - run: echo "Handle synchronize (Update branch / new head SHA)"
