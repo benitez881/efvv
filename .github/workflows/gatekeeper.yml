@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   pull_request_review:
     types: [submitted, dismissed]
-    branches: [master] # ← за потреби заміни на master
+    branches: [master]
 
 permissions:
   contents: read
@@ -20,5 +20,10 @@ jobs:
         (github.event.action == 'submitted' && github.event.review.state != 'commented')
       }}
     steps:
+      - name: Debug event info
+        run: |
+          echo "Action: ${{ github.event.action }}"
+          echo "Review state: ${{ github.event.review.state }}"
+
       - name: Passed non-comment filter
         run: echo "Review event passed filter (not commented)"
